@@ -1,4 +1,4 @@
-# AIAlgorithms-Systems
+# AIAlgorithmsSystems
 Assignment code for AI algorithms and systems, ZJU 2022
 
 # Academic Integrity
