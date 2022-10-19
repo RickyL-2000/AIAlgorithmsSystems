@@ -32,7 +32,8 @@ class MLP(torch.nn.Module):
             for bn in self.bns:
                 bn.reset_parameters()
 
-    def forward(self, x):
+    def forward(self, data):
+        x = data.x
         for i, lin in enumerate(self.lins[:-1]):
             x = lin(x)
             if self.batchnorm:
