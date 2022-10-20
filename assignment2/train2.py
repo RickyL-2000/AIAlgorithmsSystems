@@ -46,8 +46,8 @@ if dataset_name in ['DGraph']:
     nlabels = 2    #本实验中仅需预测类0和类1
 
 data = dataset[0]
-# data.adj_t = data.adj_t.to_symmetric() #将有向图转化为无向图
-data.edge_index = data.edge_stores[0].edge_index
+data.adj_t = data.adj_t.to_symmetric() #将有向图转化为无向图
+# data.edge_index = data.edge_stores[0].edge_index
 
 if dataset_name in ['DGraph']:
     x = data.x
@@ -61,14 +61,28 @@ split_idx = {'train': data.train_mask, 'valid': data.valid_mask, 'test': data.te
 train_idx = split_idx['train']
 # result_dir = prepare_folder(dataset_name,'mlp')
 
-# 注意：
-# 本 subgraph 操作会丢失边的信息，故本 train.py 方法精度很低。需要使用 train2.py
-train_data = data.subgraph(train_idx)
-train_data.edge_index = train_data.edge_stores[0].edge_index
-valid_data = data.subgraph(split_idx['valid'])
-valid_data.edge_index = valid_data.edge_stores[0].edge_index
-test_data = data.subgraph(split_idx['test'])
-test_data.edge_index = test_data.edge_stores[0].edge_index
+# %%
+# import scipy.sparse as sp
+# ed  = sp.coo_matrix(data.adj_t)
+# print(ed )
+# indices=np.vstack((ed.row,ed.col))
+# index=torch.Tensor(indices)
+# values=torch.Tensor(ed.data)
+# edge_index=torch.sparse_coo_tensor(index,values,ed.shape)
+#
+# # %%
+# edge_index_temp = sp.coo_matrix(data.adj_t)
+# print(edge_index_temp)
+#
+# values = edge_index_temp.data  # 边上对应权重值weight
+# indices = np.vstack((edge_index_temp.row, edge_index_temp.col))  # 我们真正需要的coo形式
+# edge_index_A = torch.LongTensor(indices)  # 我们真正需要的coo形式
+# print(edge_index_A)
+#
+# i = torch.LongTensor(indices)  # 转tensor
+# v = torch.FloatTensor(values)  # 转tensor
+# edge_index = torch.sparse_coo_tensor(i, v, edge_index_temp.shape)
+# print(edge_index)
 
 # %%
 para_dict = hparams[model_name]
@@ -78,7 +92,6 @@ para_dict = hparams[model_name]
 # model = MLP(in_channels=data.x.size(-1), out_channels=nlabels, **model_para).to(device)
 # print(f'Model MLP initialized')
 model = models.build_model(model_name, hparams[model_name], device)
-print(f"experiment: {hparams['exp_name']}")
 
 eval_metric = 'auc'  #使用AUC衡量指标
 evaluator = Evaluator(eval_metric)
@@ -90,30 +103,30 @@ def train(model, data, train_idx, optimizer):
 
     optimizer.zero_grad()
 
-    out = model(data)
+    out = model(data, train_idx)
 
-    loss = F.nll_loss(out, data.y)
+    loss = F.nll_loss(out[train_idx], data.y[train_idx])
     loss.backward()
     optimizer.step()
 
     return loss.item()
 
 
-def test(model, train_data, valid_data, split_idx, evaluator):
+def test(model, data, split_idx, evaluator):
     # data.y is labels of shape (N, )
     with torch.no_grad():
         model.eval()
 
         losses, eval_results = dict(), dict()
         for key in ['train', 'valid']:
-            # node_id = split_idx[key]
-            data = train_data if key == "train" else valid_data
+            node_id = split_idx[key]
+            # data = train_data if key == "train" else valid_data
 
-            out = model(data)
+            out = model(data, node_id)
             y_pred = out.exp()  # (N,num_classes)
 
-            losses[key] = F.nll_loss(out, data.y).cpu().item()
-            eval_results[key] = evaluator.eval(data.y, y_pred)[eval_metric]
+            losses[key] = F.nll_loss(out[node_id], data.y[node_id]).cpu().item()
+            eval_results[key] = evaluator.eval(data.y[node_id], y_pred[node_id])[eval_metric]
 
     return eval_results, losses, y_pred
 
@@ -124,8 +137,9 @@ model.reset_parameters()
 optimizer = torch.optim.Adam(model.parameters(), lr=para_dict['lr'], weight_decay=para_dict['weight_decay'])
 best_valid = 0
 min_valid_loss = 1e8
-train_data.to(device)
-valid_data.to(device)
+data.to(device)
+# train_data.to(device)
+# valid_data.to(device)
 
 # 保存代码
 mkdir(f"{save_dir}/code")
@@ -135,9 +149,9 @@ exe_cmd(f"cp train.py {save_dir}/code")
 
 for epoch in range(1, hparams["epochs"] + 1):
     model.train()
-    loss = train(model, train_data, train_idx, optimizer)
+    loss = train(model, data, train_idx, optimizer)
     model.eval()
-    eval_results, losses, out = test(model, train_data, valid_data, split_idx, evaluator)
+    eval_results, losses, out = test(model, data, split_idx, evaluator)
     train_eval, valid_eval = eval_results['train'], eval_results['valid']
     train_loss, valid_loss = losses['train'], losses['valid']
 

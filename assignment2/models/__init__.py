@@ -21,3 +21,15 @@ def build_model(model_name, hparams, device):
         model = GAT(**model_para).to(device)
         print(f'Model GAT initialized')
         return model
+    elif model_name == "sage":
+        model_para.pop('lr')
+        model_para.pop('weight_decay')
+        model = GraphSAGE(**model_para).to(device)
+        print(f'Model GraphSAGE initialized')
+        return model
+    elif model_name == "mix":
+        model_para.pop('lr')
+        model_para.pop('weight_decay')
+        model = MixModel(**model_para).to(device)
+        print(f'Model MixModel initialized')
+        return model

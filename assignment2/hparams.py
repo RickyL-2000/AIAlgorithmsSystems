@@ -18,18 +18,38 @@ hparams = {
         'weight_decay': 5e-7
     },
     "gat": {
-        'lr': 0.01,
-        'n_feat': 20,
-        'n_hid': 32,
-        'n_class': 2,
-        'dropout': 0.2,
-        'alpha': 0.01,
-        'n_heads': 2,
+        'lr': 0.001,
+        'in_channels': 20,
+        'hidden_channels': 64,
+        'out_channels': 2,
+        'heads': 2,
+        'negative_slope': 0.1,
+        'dropout': 0.5,
         'weight_decay': 5e-7
     },
-    "epochs": 800,
+    "sage": {
+        'lr': 0.002,
+        'in_channels': 20,
+        'hidden_channels': 32,
+        'out_channels': 2,
+        'dropout': 0.5,
+        'weight_decay': 5e-7,
+        'aggr': 'mean'
+    },
+    "mix": {
+        'lr': 0.005,
+        'in_channels': 20,
+        'hidden_channels': 64,
+        'out_channels': 2,
+        'heads': 2,
+        'negative_slope': 0.1,
+        'dropout': 0.5,
+        'weight_decay': 5e-7,
+        'aggr': 'mean'
+    },
+    "epochs": 1600,
     "log_steps": 10,
-    "model_name": "naivegnn",
-    "exp_name": 14,
+    "model_name": "sage",
+    "exp_name": 13,
     "device": 2
 }
